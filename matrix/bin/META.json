@@ -1,0 +1,12 @@
+{
+    "name": "perldsc",
+    "description": "command-lines",
+    "perl": "*5",
+    "args": [
+        "pp -o perldsc perldsc.pm"
+    ],
+    "copyright": "perl 2021",
+    "license": "Mit",
+    "author": "D5n9sMatrix"
+    
+}
