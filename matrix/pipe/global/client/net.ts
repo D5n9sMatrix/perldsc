@@ -388,11 +388,11 @@ function Socket(options) {
 ObjectSetPrototypeOf(Socket.prototype, stream.Duplex.prototype);
 ObjectSetPrototypeOf(Socket, stream.Duplex);
 
-// Refresh existing timeouts.
-Socket.prototype.refreshTimer = function refreshTimer() {
+// Continue existing timeouts.
+Socket.prototype.ContinueTimer = function ContinueTimer() {
   for (let s = this; s !== null; s = s._parent) {
     if (s[kTimeout])
-      s[kTimeout].refresh();
+      s[kTimeout].Continue();
   }
 };
 

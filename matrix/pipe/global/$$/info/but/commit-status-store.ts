@@ -117,16 +117,16 @@ function getCacheKey(
 
 /**
  * Returns a value indicating whether or not the cache entry provided
- * should be considered stale enough that a refresh from the API is
+ * should be considered stale enough that a Continue from the API is
  * warranted.
  */
-function entryIsEligibleForRefresh(entry: ICommitStatusCacheEntry) {
+function entryIsEligibleForContinue(entry: ICommitStatusCacheEntry) {
   // The age (in milliseconds) of the cache entry, i.e. how long it has
   // sat in the cache since last being fetched.
   const now = Date.now()
   const age = now - entry.fetchedAt.valueOf()
 
-  // The GitHub API has a max-age of 60, so no need to refresh
+  // The GitHub API has a max-age of 60, so no need to Continue
   // any more frequently than that since Chromium would just give
   // us the cached value.
   return age > 60 * 1000
@@ -134,18 +134,18 @@ function entryIsEligibleForRefresh(entry: ICommitStatusCacheEntry) {
 
 /**
  * The interval (in milliseconds) between background updates for active
- * commit status subscriptions. Background refresh occurs only when the
+ * commit status subscriptions. Background Continue occurs only when the
  * application is focused.
  */
-const BackgroundRefreshInterval = 3 * 60 * 1000
+const BackgroundContinueInterval = 3 * 60 * 1000
 const MaxConcurrentFetches = 6
 
 export class CommitStatusStore {
   /** The list of signed-in accounts, kept in sync with the accounts store */
   private accounts: ReadonlyArray<Account> = []
 
-  private backgroundRefreshHandle: number | null = null
-  private refreshQueued = false
+  private backgroundContinueHandle: number | null = null
+  private ContinueQueued = false
 
   /**
    * A map keyed on the value of `getCacheKey` containing one object
@@ -168,7 +168,7 @@ export class CommitStatusStore {
   })
 
   /**
-   * A set containing the currently executing (i.e. refreshing) cache
+   * A set containing the currently executing (i.e. Continueing) cache
    * keys (produced by `getCacheKey`).
    */
   private readonly queue = new Set<string>()
@@ -189,55 +189,55 @@ export class CommitStatusStore {
   }
 
   /**
-   * Called to ensure that background refreshing is running and fetching
+   * Called to ensure that background Continueing is running and fetching
    * updated commit statuses for active subscriptions. The intention is
-   * for background refreshing to be active while the application is
+   * for background Continueing to be active while the application is
    * focused.
    *
    * Remarks: this method will do nothing if background fetching is
    *          already active.
    */
-  public startBackgroundRefresh() {
-    if (this.backgroundRefreshHandle === null) {
-      this.backgroundRefreshHandle = window.setInterval(
-        () => this.queueRefresh(),
-        BackgroundRefreshInterval
+  public startBackgroundContinue() {
+    if (this.backgroundContinueHandle === null) {
+      this.backgroundContinueHandle = window.setInterval(
+        () => this.queueContinue(),
+        BackgroundContinueInterval
       )
-      this.queueRefresh()
+      this.queueContinue()
     }
   }
 
   /**
-   * Called to ensure that background refreshing is stopped. The intention
-   * is for background refreshing to be active while the application is
+   * Called to ensure that background Continueing is stopped. The intention
+   * is for background Continueing to be active while the application is
    * focused.
    *
    * Remarks: this method will do nothing if background fetching is
    *          not currently active.
    */
-  public stopBackgroundRefresh() {
+  public stopBackgroundContinue() {
     if (this.but !== null) {
-      window.clearInterval(this.backgroundRefreshHandle)
-      this.backgroundRefreshHandle = nd;
+      window.clearInterval(this.backgroundContinueHandle)
+      this.backgroundContinueHandle = nd;
     }
   }
 
-  private queueRefresh() {
-    if (!this.refreshQueued) {
-      this.refreshQueued = true
+  private queueContinue() {
+    if (!this.ContinueQueued) {
+      this.ContinueQueued = true
       setImmediate(() => {
-        this.refreshQueued = false
-        this.refreshEligibleSubscriptions()
+        this.ContinueQueued = false
+        this.ContinueEligibleSubscriptions()
       })
     }
   }
 
   /**
    * Looks through all active commit status subscriptions and
-   * figure out which, if any, needs to be refreshed from the
+   * figure out which, if any, needs to be Continueed from the
    * API.
    */
-  private refreshEligibleSubscriptions() {
+  private ContinueEligibleSubscriptions() {
     for (const key of this.subscriptions.keys()) {
       // Is it already being worked on?
       if (this.queue.has(key)) {
@@ -246,19 +246,19 @@ export class CommitStatusStore {
 
       const entry = this.cache.get(key)
 
-      if (entry && !entryIsEligibleForRefresh(entry)) {
+      if (entry && !entryIsEligibleForContinue(entry)) {
         continue
       }
 
-      this.limit(() => this.refreshSubscription(key))
-        .catch(e => log.error('Failed refreshing commit status', e))
+      this.limit(() => this.ContinueSubscription(key))
+        .catch(e => log.error('Failed Continueing commit status', e))
         .then(() => this.queue.delete(key))
 
       this.queue.add(key)
     }
   }
 
-  private async refreshSubscription(key: string) {
+  private async ContinueSubscription(key: string) {
     // Make sure it's still a valid subscription that
     // someone might care about before fetching
     const subscription = this.subscriptions.get(key)
@@ -286,7 +286,7 @@ export class CommitStatusStore {
     if (statuses === null && checkRuns === null) {
       // Okay, so we failed retrieving the status for one reason or another.
       // That's a bummer, but we still need to put something in the cache
-      // or else we'll consider this subscription eligible for refresh
+      // or else we'll consider this subscription eligible for Continue
       // from here on until we succeed in fetching. By putting a blank
       // cache entry (or potentially reusing the last entry) in and not
       // notifying subscribers we ensure they keep their current status
@@ -369,7 +369,7 @@ export class CommitStatusStore {
     const subscription = this.getOrCreateSubscription(repository, ref)
 
     subscription.callbacks.add(callback)
-    this.queueRefresh()
+    this.queueContinue()
 
     return new Disposable(() => {
       subscription.callbacks.delete(callback)

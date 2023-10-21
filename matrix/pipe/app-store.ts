@@ -333,7 +333,7 @@ const repositoryIndicatorsEnabledKey = 'enable-repository-indicators'
 const BackgroundFetchMinimumInterval = 30 * 60 * 1000
 
 /**
- * Wait 2 minutes before refreshing repository indicators
+ * Wait 2 minutes before Continueing repository indicators
  */
 const InitialRepositoryIndicatorTimeout = 2 * 60 * 1000
 
@@ -498,8 +498,8 @@ export class AppStore extends TypedBaseStore<IAppState> {
       getBoolean(repositoryIndicatorsEnabledKey) ?? true
 
     this.repositoryIndicatorUpdater = new RepositoryIndicatorUpdater(
-      this.getRepositoriesForIndicatorRefresh,
-      this.refreshIndicatorForRepository
+      this.getRepositoriesForIndicatorContinue,
+      this.ContinueIndicatorForRepository
     )
 
     window.setTimeout(() => {
@@ -848,7 +848,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
             state.tip.kind === TipState.Valid &&
             tip.branch.name !== state.tip.branch.name
           ) {
-            this.refreshBranchProtectionState(repository)
+            this.ContinueBranchProtectionState(repository)
           }
         }
       }
@@ -921,7 +921,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
     this.emitUpdate()
   }
 
-  private async refreshBranchProtectionState(repository: Repository) {
+  private async ContinueBranchProtectionState(repository: Repository) {
     const { tip, currentRemote } = this.gitStoreCache.get(repository)
 
     if (tip.kind !== TipState.Valid || repository.gitHubRepository === null) {
@@ -1099,7 +1099,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
         formState.kind === HistoryTabMode.History &&
         commitSHAs.length > 0
       ) {
-        // don't refresh the history view here because we know nothing important
+        // don't Continue the history view here because we know nothing important
         // has changed and we don't want to rebuild this state
         return
       }
@@ -1428,8 +1428,8 @@ export class AppStore extends TypedBaseStore<IAppState> {
     this.updateRecentRepositories(previousRepositoryId, repository.id)
 
     // if repository might be marked missing, try checking if it has been restored
-    const refreshedRepository = await this.recoverMissingRepository(repository)
-    if (refreshedRepository.missing) {
+    const ContinueedRepository = await this.recoverMissingRepository(repository)
+    if (ContinueedRepository.missing) {
       // as the repository is no longer found on disk, cleaning this up
       // ensures we don't accidentally run any Git operations against the
       // wrong location if the user then relocates the `.git` folder elsewhere
@@ -1442,8 +1442,8 @@ export class AppStore extends TypedBaseStore<IAppState> {
     // insight into who our users are and what kinds of work they do
     this.updateBranchProtectionsFromAPI(repository)
 
-    return this._selectRepositoryRefreshTasks(
-      refreshedRepository,
+    return this._selectRepositoryContinueTasks(
+      ContinueedRepository,
       previouslySelectedRepository
     )
   }
@@ -1475,27 +1475,27 @@ export class AppStore extends TypedBaseStore<IAppState> {
     this.emitUpdate()
   }
 
-  // finish `_selectRepository`s refresh tasks
-  private async _selectRepositoryRefreshTasks(
+  // finish `_selectRepository`s Continue tasks
+  private async _selectRepositoryContinueTasks(
     repository: Repository,
     previouslySelectedRepository: Repository | CloningRepository | null
   ): Promise<Repository | null> {
-    this._refreshRepository(repository)
+    this._ContinueRepository(repository)
 
     if (isRepositoryWithGitHubRepository(repository)) {
       // Load issues from the upstream or fork depending
       // on workflow preferences.
       const ghRepo = getNonForkGitHubRepository(repository)
 
-      this._refreshIssues(ghRepo)
-      this.refresh(ghRepo)
+      this._ContinueIssues(ghRepo)
+      this.Continue(ghRepo)
 
       this.pullRequestCoordinator.getAllPullRequests(repository).then(prs => {
         this.onPullRequestChanged(repository, prs)
       })
     }
 
-    // The selected repository could have changed while we were refreshing.
+    // The selected repository could have changed while we were Continueing.
     if (this.selectedRepository !== repository) {
       return null
     }
@@ -1514,7 +1514,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
 
     this.addUpstreamRemoteIfNeeded(repository)
 
-    return this.repositoryWithRefreshedGitHubRepository(repository)
+    return this.repositoryWithContinueedGitHubRepository(repository)
   }
 
   private stopBackgroundPruner() {
@@ -1538,20 +1538,20 @@ export class AppStore extends TypedBaseStore<IAppState> {
       this.gitStoreCache,
       this.repositoriesStore,
       this.repositoryStateCache,
-      repository => this._refreshRepository(repository)
+      repository => this._ContinueRepository(repository)
     )
     this.currentBranchPruner = pruner
     this.currentBranchPruner.start()
   }
 
-  public async _refreshIssues(repository: GitHubRepository) {
+  public async _ContinueIssues(repository: GitHubRepository) {
     const user = getAccountForEndpoint(this.accounts, repository.endpoint)
     if (!user) {
       return
     }
 
     try {
-      await this.issuesStore.refreshIssues(repository, user)
+      await this.issuesStore.ContinueIssues(repository, user)
     } catch (e) {
       log.warn(`Unable to fetch issues for ${repository.fullName}`, e)
     }
@@ -1565,7 +1565,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
     }
   }
 
-  private refresh(repository: GitHubRepository) {
+  private Continue(repository: GitHubRepository) {
     const account = getAccountForEndpoint(this.accounts, repository.endpoint)
     if (!account) {
       return
@@ -1667,7 +1667,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
     }
 
     // Todo: add logic to background checker to check the API before fetching
-    // similar to what's being done in `refreshAllIndicators`
+    // similar to what's being done in `ContinueAllIndicators`
     const fetcher = new BackgroundFetcher(
       repository,
       account,
@@ -1775,7 +1775,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
 
     this.emitUpdateNow()
 
-    this.accountsStore.refresh()
+    this.accountsStore.Continue()
   }
 
   private updateSelectedExternalEditor(
@@ -2144,9 +2144,9 @@ export class AppStore extends TypedBaseStore<IAppState> {
     this.emitUpdate()
 
     if (selectedSection === RepositorySectionTab.History) {
-      return this.refreshHistorySection(repository)
+      return this.ContinueHistorySection(repository)
     } else if (selectedSection === RepositorySectionTab.Changes) {
-      return this.refreshChangesSection(repository, {
+      return this.ContinueChangesSection(repository, {
         includingStatus: true,
         clearPartialState: false,
       })
@@ -2177,7 +2177,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
   }
 
   /**
-   * Loads or re-loads (refreshes) the diff for the currently selected file
+   * Loads or re-loads (Continuees) the diff for the currently selected file
    * in the working directory. This operation is a noop if there's no currently
    * selected file.
    */
@@ -2486,8 +2486,8 @@ export class AppStore extends TypedBaseStore<IAppState> {
           files
         )
 
-        await this._refreshRepository(repository)
-        await this.refreshChangesSection(repository, {
+        await this._ContinueRepository(repository)
+        await this.ContinueChangesSection(repository, {
           includingStatus: true,
           clearPartialState: true,
         })
@@ -2636,18 +2636,18 @@ export class AppStore extends TypedBaseStore<IAppState> {
   }
 
   /** This shouldn't be called directly. See `Dispatcher`. */
-  public async _refreshOrRecoverRepository(
+  public async _ContinueOrRecoverRepository(
     repository: Repository
   ): Promise<void> {
     // if repository is missing, try checking if it has been restored
     if (repository.missing) {
       const updatedRepository = await this.recoverMissingRepository(repository)
       if (!updatedRepository.missing) {
-        // repository has been restored, attempt to refresh it now.
-        return this._refreshRepository(updatedRepository)
+        // repository has been restored, attempt to Continue it now.
+        return this._ContinueRepository(updatedRepository)
       }
     } else {
-      return this._refreshRepository(repository)
+      return this._ContinueRepository(repository)
     }
   }
 
@@ -2670,7 +2670,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
   }
 
   /** This shouldn't be called directly. See `Dispatcher`. */
-  public async _refreshRepository(repository: Repository): Promise<void> {
+  public async _ContinueRepository(repository: Repository): Promise<void> {
     if (repository.missing) {
       return
     }
@@ -2700,12 +2700,12 @@ export class AppStore extends TypedBaseStore<IAppState> {
     await gitStore.loadBranches()
 
     const section = state.selectedSection
-    let refreshSectionPromise: Promise<void>
+    let ContinueSectionPromise: Promise<void>
 
     if (section === RepositorySectionTab.History) {
-      refreshSectionPromise = this.refreshHistorySection(repository)
+      ContinueSectionPromise = this.ContinueHistorySection(repository)
     } else if (section === RepositorySectionTab.Changes) {
-      refreshSectionPromise = this.refreshChangesSection(repository, {
+      ContinueSectionPromise = this.ContinueChangesSection(repository, {
         includingStatus: false,
         clearPartialState: false,
       })
@@ -2717,11 +2717,11 @@ export class AppStore extends TypedBaseStore<IAppState> {
       gitStore.loadRemotes(),
       gitStore.updateLastFetched(),
       gitStore.loadStashEntries(),
-      this._refreshAuthor(repository),
-      refreshSectionPromise,
+      this._ContinueAuthor(repository),
+      ContinueSectionPromise,
     ])
 
-    await gitStore.refreshTags()
+    await gitStore.ContinueTags()
 
     // this promise is fire-and-forget, so no need to await it
     this.updateStashEntryCountMetric(
@@ -2786,9 +2786,9 @@ export class AppStore extends TypedBaseStore<IAppState> {
     })
   }
   /**
-   * Refresh indicator in repository list for a specific repository
+   * Continue indicator in repository list for a specific repository
    */
-  private refreshIndicatorForRepository = async (repository: Repository) => {
+  private ContinueIndicatorForRepository = async (repository: Repository) => {
     const lookup = this.localRepositoryStateLookup
 
     if (repository.missing) {
@@ -2832,9 +2832,9 @@ export class AppStore extends TypedBaseStore<IAppState> {
     }
   }
 
-  private getRepositoriesForIndicatorRefresh = () => {
-    // The currently selected repository will get refreshed by both the
-    // BackgroundFetcher and the refreshRepository call from the
+  private getRepositoriesForIndicatorContinue = () => {
+    // The currently selected repository will get Continueed by both the
+    // BackgroundFetcher and the ContinueRepository call from the
     // focus event. No point in having the RepositoryIndicatorUpdater do
     // it as well.
     //
@@ -2848,8 +2848,8 @@ export class AppStore extends TypedBaseStore<IAppState> {
    * A slimmed down version of performFetch which is only used when fetching
    * the repository in order to compute the repository indicator status.
    *
-   * As opposed to `performFetch` this method will not perform a full refresh
-   * of the repository after fetching, nor will it refresh issues, branch
+   * As opposed to `performFetch` this method will not perform a full Continue
+   * of the repository after fetching, nor will it Continue issues, branch
    * protection information etc. It's intention is to only do the bare minimum
    * amount of work required to calculate an up-to-date ahead/behind status
    * of the current branch to its upstream tracking branch.
@@ -2898,11 +2898,11 @@ export class AppStore extends TypedBaseStore<IAppState> {
   }
 
   /**
-   * Refresh all the data for the Changes section.
+   * Continue all the data for the Changes section.
    *
    * This will be called automatically when appropriate.
    */
-  private async refreshChangesSection(
+  private async ContinueChangesSection(
     repository: Repository,
     options: {
       includingStatus: boolean
@@ -2925,11 +2925,11 @@ export class AppStore extends TypedBaseStore<IAppState> {
   }
 
   /**
-   * Refresh all the data for the History section.
+   * Continue all the data for the History section.
    *
    * This will be called automatically when appropriate.
    */
-  private async refreshHistorySection(repository: Repository): Promise<void> {
+  private async ContinueHistorySection(repository: Repository): Promise<void> {
     const gitStore = this.gitStoreCache.get(repository)
     const state = this.repositoryStateCache.get(repository)
     const tip = state.branchesState.tip
@@ -2944,7 +2944,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
     )
   }
 
-  public async _refreshAuthor(repository: Repository): Promise<void> {
+  public async _ContinueAuthor(repository: Repository): Promise<void> {
     const gitStore = this.gitStoreCache.get(repository)
     const commitAuthor =
       (await gitStore.performOperation(() =>
@@ -2994,7 +2994,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
     this.emitUpdate()
 
     // If the user is opening the repository list and we haven't yet
-    // started to refresh the repository indicators let's do so.
+    // started to Continue the repository indicators let's do so.
     if (
       foldout.type === FoldoutType.Repository &&
       this.repositoryIndicatorsEnabled
@@ -3138,13 +3138,13 @@ export class AppStore extends TypedBaseStore<IAppState> {
     }
 
     return this.withAuthenticatingUser(repository, (repository, account) => {
-      // We always want to end with refreshing the repository regardless of
+      // We always want to end with Continueing the repository regardless of
       // whether the checkout succeeded or not in order to present the most
       // up-to-date information to the user.
       return this.checkoutImplementation(repository, branch, account, strategy)
         .then(() => this.onSuccessfulCheckout(repository, branch))
         .catch(e => this.emitBug(new CheckoutBug(e, repository, branch)))
-        .then(() => this.refreshAfterCheckout(repository, branch))
+        .then(() => this.ContinueAfterCheckout(repository, branch))
         .finally(() => this.updateCheckoutProgress(repository, null))
     })
   }
@@ -3262,15 +3262,15 @@ export class AppStore extends TypedBaseStore<IAppState> {
     this.hasUserViewedStash = false
   }
 
-  private async refreshAfterCheckout(repository: Repository, branch: Branch) {
+  private async ContinueAfterCheckout(repository: Repository, branch: Branch) {
     this.updateCheckoutProgress(repository, {
       kind: 'checkout',
-      title: `Refreshing ${__DARWIN__ ? 'Repository' : 'repository'}`,
+      title: `Continueing ${__DARWIN__ ? 'Repository' : 'repository'}`,
       value: 1,
       targetBranch: branch.name,
     })
 
-    await this._refreshRepository(repository)
+    await this._ContinueRepository(repository)
     return repository
   }
 
@@ -3305,7 +3305,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
 
     if (await this.createStashAndDropPreviousEntry(repository, currentBranch)) {
       this.statsStore.recordStashCreatedOnCurrentBranch()
-      await this._refreshRepository(repository)
+      await this._ContinueRepository(repository)
       return true
     }
 
@@ -3321,7 +3321,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
    * @param repository
    * @returns repository model (hopefully with fresh `gitHubRepository` info)
    */
-  private async repositoryWithRefreshedGitHubRepository(
+  private async repositoryWithContinueedGitHubRepository(
     repository: Repository
   ): Promise<Repository> {
     const repoStore = this.repositoriesStore
@@ -3359,7 +3359,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
     const ghRepo = await repoStore.upsertGitHubRepository(endpoint, apiRepo)
     const freshRepo = await repoStore.setGitHubRepository(repository, ghRepo)
 
-    await this.refreshBranchProtectionState(freshRepo)
+    await this.ContinueBranchProtectionState(freshRepo)
     return freshRepo
   }
 
@@ -3441,7 +3441,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
       renameBranch(repository, branch, newName)
     )
 
-    return this._refreshRepository(repository)
+    return this._ContinueRepository(repository)
   }
 
   /** This shouldn't be called directly. See `Dispatcher`. */
@@ -3474,7 +3474,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
           `Deleted branch ${branch.upstreamWithoutRemote} (was ${tip.sha})`
         )
 
-        return this._refreshRepository(r)
+        return this._ContinueRepository(r)
       }
 
       // If a local branch, user may have the branch to delete checked out and
@@ -3497,7 +3497,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
         )
       })
 
-      return this._refreshRepository(r)
+      return this._ContinueRepository(r)
     })
   }
 
@@ -3633,11 +3633,11 @@ export class AppStore extends TypedBaseStore<IAppState> {
         let pushWeight = 2.5
         let fetchWeight = 1
 
-        // Let's leave 10% at the end for refreshing
-        const refreshWeight = 0.1
+        // Let's leave 10% at the end for Continueing
+        const ContinueWeight = 0.1
 
         // Scale pull and fetch weights to be between 0 and 0.9.
-        const scale = (1 / (pushWeight + fetchWeight)) * (1 - refreshWeight)
+        const scale = (1 / (pushWeight + fetchWeight)) * (1 - ContinueWeight)
 
         pushWeight *= scale
         fetchWeight *= scale
@@ -3661,7 +3661,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
         // The remote.name is derived from the current tip first and falls
         // back to using the defaultRemote if the current tip isn't valid
         // or if the current branch isn't published. There's however no
-        // guarantee that they'll be refreshed at the exact same time so
+        // guarantee that they'll be Continueed at the exact same time so
         // there's a theoretical possibility that `branch.remote` and
         // `remote.name` could be out of sync. I have no reason to suspect
         // that's the case and if it is then we already have problems as
@@ -3718,31 +3718,31 @@ export class AppStore extends TypedBaseStore<IAppState> {
               }
             )
 
-            const refreshTitle = __DARWIN__
-              ? 'Refreshing Repository'
-              : 'Refreshing repository'
-            const refreshStartProgress = pushWeight + fetchWeight
+            const ContinueTitle = __DARWIN__
+              ? 'Continueing Repository'
+              : 'Continueing repository'
+            const ContinueStartProgress = pushWeight + fetchWeight
 
             this.updatePushPullFetchProgress(repository, {
               kind: 'generic',
-              title: refreshTitle,
+              title: ContinueTitle,
               description: 'Fast-forwarding branches',
-              value: refreshStartProgress,
+              value: ContinueStartProgress,
             })
 
             await this.fastForwardBranches(repository)
 
             this.updatePushPullFetchProgress(repository, {
               kind: 'generic',
-              title: refreshTitle,
-              value: refreshStartProgress + refreshWeight * 0.5,
+              title: ContinueTitle,
+              value: ContinueStartProgress + ContinueWeight * 0.5,
             })
 
-            // manually refresh branch protections after the push, to ensure
+            // manually Continue branch protections after the push, to ensure
             // any new branch will immediately report as protected
-            await this.refreshBranchProtectionState(repository)
+            await this.ContinueBranchProtectionState(repository)
 
-            await this._refreshRepository(repository)
+            await this._ContinueRepository(repository)
           },
           { retryAction }
         )
@@ -3876,11 +3876,11 @@ export class AppStore extends TypedBaseStore<IAppState> {
           let pullWeight = 2
           let fetchWeight = 1
 
-          // Let's leave 10% at the end for refreshing
-          const refreshWeight = 0.1
+          // Let's leave 10% at the end for Continueing
+          const ContinueWeight = 0.1
 
           // Scale pull and fetch weights to be between 0 and 0.9.
-          const scale = (1 / (pullWeight + fetchWeight)) * (1 - refreshWeight)
+          const scale = (1 / (pullWeight + fetchWeight)) * (1 - ContinueWeight)
 
           pullWeight *= scale
           fetchWeight *= scale
@@ -3910,35 +3910,35 @@ export class AppStore extends TypedBaseStore<IAppState> {
             }
           )
 
-          const refreshStartProgress = pullWeight + fetchWeight
-          const refreshTitle = __DARWIN__
-            ? 'Refreshing Repository'
-            : 'Refreshing repository'
+          const ContinueStartProgress = pullWeight + fetchWeight
+          const ContinueTitle = __DARWIN__
+            ? 'Continueing Repository'
+            : 'Continueing repository'
 
           this.updatePushPullFetchProgress(repository, {
             kind: 'generic',
-            title: refreshTitle,
+            title: ContinueTitle,
             description: 'Fast-forwarding branches',
-            value: refreshStartProgress,
+            value: ContinueStartProgress,
           })
 
           await this.fastForwardBranches(repository)
 
           this.updatePushPullFetchProgress(repository, {
             kind: 'generic',
-            title: refreshTitle,
-            value: refreshStartProgress + refreshWeight * 0.5,
+            title: ContinueTitle,
+            value: ContinueStartProgress + ContinueWeight * 0.5,
           })
 
           if (mergeBase) {
             await gitStore.reconcileHistory(mergeBase)
           }
 
-          // manually refresh branch protections after the push, to ensure
+          // manually Continue branch protections after the push, to ensure
           // any new branch will immediately report as protected
-          await this.refreshBranchProtectionState(repository)
+          await this.ContinueBranchProtectionState(repository)
 
-          await this._refreshRepository(repository)
+          await this._ContinueRepository(repository)
         } finally {
           this.updatePushPullFetchProgress(repository, null)
         }
@@ -3988,7 +3988,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
       await this.performPush(repository, account)
     }
 
-    return this.repositoryWithRefreshedGitHubRepository(repository)
+    return this.repositoryWithContinueedGitHubRepository(repository)
   }
 
   private getAccountForRemoteURL(remote: string): IGitAccount | null {
@@ -4056,7 +4056,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
     const gitStore = this.gitStoreCache.get(repository)
     await gitStore.discardChanges(files)
 
-    return this._refreshRepository(repository)
+    return this._ContinueRepository(repository)
   }
 
   public async _discardChangesFromSelection(
@@ -4068,7 +4068,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
     const gitStore = this.gitStoreCache.get(repository)
     await gitStore.discardChangesFromSelection(filePath, diff, selection)
 
-    return this._refreshRepository(repository)
+    return this._ContinueRepository(repository)
   }
 
   public async _undoCommit(
@@ -4088,7 +4088,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
       this.clearSelectedCommit(repository)
     }
 
-    return this._refreshRepository(repository)
+    return this._ContinueRepository(repository)
   }
 
   /**
@@ -4110,7 +4110,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
         const gitStore = this.gitStoreCache.get(repository)
         await gitStore.fetch(account, repo)
 
-        return this._refreshRepository(repository)
+        return this._ContinueRepository(repository)
       }
     )
   }
@@ -4163,7 +4163,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
 
       try {
         const fetchWeight = 0.9
-        const refreshWeight = 0.1
+        const ContinueWeight = 0.1
         const isBackgroundTask = fetchType === FetchType.BackgroundTask
 
         const progressCallback = (progress: IFetchProgress) => {
@@ -4184,13 +4184,13 @@ export class AppStore extends TypedBaseStore<IAppState> {
           )
         }
 
-        const refreshTitle = __DARWIN__
-          ? 'Refreshing Repository'
-          : 'Refreshing repository'
+        const ContinueTitle = __DARWIN__
+          ? 'Continueing Repository'
+          : 'Continueing repository'
 
         this.updatePushPullFetchProgress(repository, {
           kind: 'generic',
-          title: refreshTitle,
+          title: ContinueTitle,
           description: 'Fast-forwarding branches',
           value: fetchWeight,
         })
@@ -4199,21 +4199,21 @@ export class AppStore extends TypedBaseStore<IAppState> {
 
         this.updatePushPullFetchProgress(repository, {
           kind: 'generic',
-          title: refreshTitle,
-          value: fetchWeight + refreshWeight * 0.5,
+          title: ContinueTitle,
+          value: fetchWeight + ContinueWeight * 0.5,
         })
 
-        // manually refresh branch protections after the push, to ensure
+        // manually Continue branch protections after the push, to ensure
         // any new branch will immediately report as protected
-        await this.refreshBranchProtectionState(repository)
+        await this.ContinueBranchProtectionState(repository)
 
-        await this._refreshRepository(repository)
+        await this._ContinueRepository(repository)
       } finally {
         this.updatePushPullFetchProgress(repository, null)
 
         if (fetchType === FetchType.UserInitiatedTask) {
           if (repository.gitHubRepository != null) {
-            this._refreshIssues(repository.gitHubRepository)
+            this._ContinueIssues(repository.gitHubRepository)
           }
         }
       }
@@ -4356,7 +4356,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
       })
     }
 
-    return this._refreshRepository(repository)
+    return this._ContinueRepository(repository)
   }
 
   /** This shouldn't be called directly. See `Dispatcher`. */
@@ -4601,7 +4601,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
     text: string
   ): Promise<void> {
     await saveGitIgnore(repository, text)
-    return this._refreshRepository(repository)
+    return this._ContinueRepository(repository)
   }
 
   /** Set whether the user has opted out of stats reporting. */
@@ -4703,7 +4703,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
     setBoolean(hideWhitespaceInChangesDiffKey, hideWhitespaceInDiff)
     this.hideWhitespaceInChangesDiff = hideWhitespaceInDiff
 
-    return this.refreshChangesSection(repository, {
+    return this.ContinueChangesSection(repository, {
       includingStatus: true,
       clearPartialState: true,
     })
@@ -4772,7 +4772,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
     pattern: string | string[]
   ): Promise<void> {
     await appendIgnoreRule(repository, pattern)
-    return this._refreshRepository(repository)
+    return this._ContinueRepository(repository)
   }
 
   public _resetSignInState(): Promise<void> {
@@ -4882,7 +4882,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
     const storedAccount = await this.accountsStore.addAccount(account)
 
     // If we're in the welcome flow and a user signs in we want to trigger
-    // a refresh of the repositories available for cloning straight away
+    // a Continue of the repositories available for cloning straight away
     // in order to have the list of repositories ready for them when they
     // get to the.
     if (this.showWelcomeFlow && storedAccount !== null) {
@@ -4957,7 +4957,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
         const repositories = this.repositories
         const existing = matchExistingRepository(repositories, validatedPath)
 
-        // We don't have to worry about repositoryWithRefreshedGitHubRepository
+        // We don't have to worry about repositoryWithContinueedGitHubRepository
         // and isUsingLFS if the repo already exists in the app.
         if (existing !== undefined) {
           addedRepositories.push(existing)
@@ -4973,14 +4973,14 @@ export class AppStore extends TypedBaseStore<IAppState> {
         const gitStore = this.gitStoreCache.get(addedRepo)
         await gitStore.loadRemotes()
 
-        const [refreshedRepo, usingLFS] = await Promise.all([
-          this.repositoryWithRefreshedGitHubRepository(addedRepo),
+        const [ContinueedRepo, usingLFS] = await Promise.all([
+          this.repositoryWithContinueedGitHubRepository(addedRepo),
           this.isUsingLFS(addedRepo),
         ])
-        addedRepositories.push(refreshedRepo)
+        addedRepositories.push(ContinueedRepo)
 
         if (usingLFS) {
-          lfsRepositories.push(refreshedRepo)
+          lfsRepositories.push(ContinueedRepo)
         }
       } else {
         invalidPaths.push(path)
@@ -5089,7 +5089,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
     // association is out of date. So try again before we bail on providing an
     // authenticating user.
     if (!account) {
-      updatedRepository = await this.repositoryWithRefreshedGitHubRepository(
+      updatedRepository = await this.repositoryWithContinueedGitHubRepository(
         repository
       )
       account = getAccountForRepository(this.accounts, updatedRepository)
@@ -5144,7 +5144,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
       })
 
       this.updateRevertProgress(repo, null)
-      await this._refreshRepository(repository)
+      await this._ContinueRepository(repository)
     })
   }
 
@@ -5212,11 +5212,11 @@ export class AppStore extends TypedBaseStore<IAppState> {
   }
 
   /**
-   * Request a refresh of the list of repositories that
+   * Request a Continue of the list of repositories that
    * the provided account has explicit permissions to access.
    * See ApiRepositoriesStore for more details.
    */
-  public _refreshApiRepositories(account: Account) {
+  public _ContinueApiRepositories(account: Account) {
     return this.apiRepositoriesStore.loadRepositories(account)
   }
 
@@ -5297,11 +5297,11 @@ export class AppStore extends TypedBaseStore<IAppState> {
     await this._openInBrowser(showPrUrl)
   }
 
-  public async _refreshPullRequests(repository: Repository): Promise<void> {
+  public async _ContinuePullRequests(repository: Repository): Promise<void> {
     if (isRepositoryWithGitHubRepository(repository)) {
       const account = getAccountForRepository(this.accounts, repository)
       if (account !== null) {
-        await this.pullRequestCoordinator.refreshPullRequests(
+        await this.pullRequestCoordinator.ContinuePullRequests(
           repository,
           account
         )
@@ -5383,7 +5383,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
     const gitStore = this.gitStoreCache.get(repository)
     await gitStore.updateExistingUpstreamRemote()
 
-    return this._refreshRepository(repository)
+    return this._ContinueRepository(repository)
   }
 
   private getIgnoreExistingUpstreamRemoteKey(repository: Repository): string {
@@ -5710,7 +5710,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
     )
 
     this.statsStore.recordStashRestore()
-    await this._refreshRepository(repository)
+    await this._ContinueRepository(repository)
   }
 
   /** This shouldn't be called directly. See `Dispatcher`. */
@@ -5899,7 +5899,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
       return CherryPickResult.UnableToStart
     }
 
-    await this._refreshRepository(repository)
+    await this._ContinueRepository(repository)
 
     const progressCallback = (progress: ICherryPickProgress) => {
       this.repositoryStateCache.updateCherryPickState(repository, () => ({
@@ -6137,7 +6137,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
 
     await this.checkoutBranchIfNotNull(repository, sourceBranch)
 
-    return this._refreshRepository(repository)
+    return this._ContinueRepository(repository)
   }
 
   /** This shouldn't be called directly. See `Dispatcher`. */
@@ -6190,7 +6190,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
     }
     this._setBanner(banner)
 
-    await this._refreshRepository(repository)
+    await this._ContinueRepository(repository)
 
     return true
   }

@@ -131,7 +131,7 @@ has recursive => (
     isa => t('Bool'),
 );
  
-has refresh_cache => (
+has Continue_cache => (
     is  => 'ro',
     isa => t('Bool'),
 );
@@ -558,7 +558,7 @@ sub process_file {
     }
  
     my $cache_model = $self->_cache_model_for( $path, $full_path );
-    if ( $self->refresh_cache ) {
+    if ( $self->Continue_cache ) {
         $cache_model->remove;
     }
     elsif ( $cache_model->is_cached ) {

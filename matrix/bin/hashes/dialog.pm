@@ -174,7 +174,7 @@ sub object {
 sub redraw {
   draw();
   foreach(@objlist) { $objlist{$_}->draw };
-  refresh();
+  Continue();
 }
  
 sub inputline {

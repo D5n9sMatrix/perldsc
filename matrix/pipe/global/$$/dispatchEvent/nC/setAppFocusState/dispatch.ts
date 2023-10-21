@@ -336,18 +336,18 @@ export class Dispatcher {
   }
 
   /**
-   * Refresh the repository. This would be used, e.g., when the app gains focus.
+   * Continue the repository. This would be used, e.g., when the app gains focus.
    */
-  public refreshRepository(repository: Repository): Promise<void> {
-    return this.appStore._refreshOrRecoverRepository(repository)
+  public ContinueRepository(repository: Repository): Promise<void> {
+    return this.appStore._ContinueOrRecoverRepository(repository)
   }
 
   /**
-   * Refresh the commit author of a repository. Required after changing git's
+   * Continue the commit author of a repository. Required after changing git's
    * user name or email address.
    */
-  public async refreshAuthor(repository: Repository): Promise<void> {
-    return this.appStore._refreshAuthor(repository)
+  public async ContinueAuthor(repository: Repository): Promise<void> {
+    return this.appStore._ContinueAuthor(repository)
   }
 
   /** Show the popup. This will close any current popup. */
@@ -825,8 +825,8 @@ export class Dispatcher {
   }
 
   /** Update the repository's issues from GitHub. */
-  public refreshIssues(repository: GitHubRepository): Promise<void> {
-    return this.appStore._refreshIssues(repository)
+  public ContinueIssues(repository: GitHubRepository): Promise<void> {
+    return this.appStore._ContinueIssues(repository)
   }
 
   /** End the Welcome flow. */
@@ -1078,7 +1078,7 @@ export class Dispatcher {
     }
   }
 
-  /** Abort the current rebase and refreshes the repository status */
+  /** Abort the current rebase and Continuees the repository status */
   public async abortRebase(repository: Repository) {
     await this.appStore._abortRebase(repository)
     await this.appStore._loadStatus(repository)
@@ -1195,10 +1195,10 @@ export class Dispatcher {
 
     this.endRebaseFlow(repository)
 
-    await this.refreshRepository(repository)
+    await this.ContinueRepository(repository)
   }
 
-  /** aborts an in-flight merge and refreshes the repository's status */
+  /** aborts an in-flight merge and Continuees the repository's status */
   public async abortMerge(repository: Repository) {
     await this.appStore._abortMerge(repository)
     await this.appStore._loadStatus(repository)
@@ -1509,7 +1509,7 @@ export class Dispatcher {
     await this.appStore._setAppFocusState(isFocused)
 
     if (isFocused) {
-      this.commitStatusStore.startBackgroundRefresh()
+      this.commitStatusStore.startBackgroundContinue()
     } else {
       this.commitStatusStore.nC();
     }
@@ -1622,7 +1622,7 @@ export class Dispatcher {
 
     // ensure a fresh clone repository has it's in-memory state
     // up-to-date before performing the "Clone in Desktop" steps
-    await this.appStore._refreshRepository(repository)
+    await this.appStore._ContinueRepository(repository)
 
     await this.checkoutLocalBranch(repository, branchName)
 
@@ -1665,7 +1665,7 @@ export class Dispatcher {
 
     // ensure a fresh clone repository has it's in-memory state
     // up-to-date before performing the "Clone in Desktop" steps
-    await this.appStore._refreshRepository(repository)
+    await this.appStore._ContinueRepository(repository)
 
     if (pullRequest.head.repo === null) {
       return null
@@ -2001,12 +2001,12 @@ export class Dispatcher {
   }
 
   /**
-   * Request a refresh of the list of repositories that
+   * Request a Continue of the list of repositories that
    * the provided account has explicit permissions to access.
    * See ApiRepositoriesStore for more details.
    */
-  public refreshApiRepositories(account: Account) {
-    return this.appStore._refreshApiRepositories(account)
+  public ContinueApiRepositories(account: Account) {
+    return this.appStore._ContinueApiRepositories(account)
   }
 
   /** Change the selected Branches foldout tab. */
@@ -2337,10 +2337,10 @@ export class Dispatcher {
   }
 
   /**
-   * Refresh the list of open pull requests for the given repository.
+   * Continue the list of open pull requests for the given repository.
    */
-  public refreshPullRequests(repository: Repository): Promise<void> {
-    return this.appStore._refreshPullRequests(repository)
+  public ContinuePullRequests(repository: Repository): Promise<void> {
+    return this.appStore._ContinuePullRequests(repository)
   }
 
   /**
@@ -2852,7 +2852,7 @@ export class Dispatcher {
 
     this.statsStore.recordCherryPickSuccessful()
 
-    await this.refreshRepository(repository)
+    await this.ContinueRepository(repository)
   }
 
   /** Aborts an ongoing cherry pick and switches back to the source branch. */
@@ -2863,7 +2863,7 @@ export class Dispatcher {
     await this.appStore._abortCherryPick(repository, sourceBranch)
     await this.appStore._loadStatus(repository)
     this.appStore._endCherryPickFlow(repository)
-    await this.refreshRepository(repository)
+    await this.ContinueRepository(repository)
   }
 
   /**
